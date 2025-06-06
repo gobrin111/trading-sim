@@ -1,4 +1,5 @@
 import React from 'react';
+import logo from '../assets/stimpee.svg';
 
 const Navbar = () => {
     return (
@@ -6,9 +7,11 @@ const Navbar = () => {
             <div className="flex items-center justify-between max-w-7xl mx-auto">
                 {/* Logo Section */}
                 <div className="flex items-center">
-                    <div className="bg-white text-black px-3 py-2 rounded font-bold text-lg">
-                        LOGO
-                    </div>
+                    <img
+                        src={logo}
+                        alt="Logo"
+                        className="h-10 w-auto"
+                    />
                 </div>
 
                 {/* Search Bar */}

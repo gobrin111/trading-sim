@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 
 const SignInUp = () => {
+    const [error, setError] = useState(null);
     const [signUpData, setSignUpData] = useState({
+        name: '',
         email: '',
         password: '',
-        confirmPassword: '',
-        fullName: ''
+        confirmPassword: ''
     });
 
     const [signInData, setSignInData] = useState({
@@ -27,9 +28,31 @@ const SignInUp = () => {
         });
     };
 
-    const handleSignUpSubmit = (e) => {
+    const handleSignUpSubmit = async (e) => {
         e.preventDefault();
         console.log('Sign up data:', signUpData);
+
+        try {
+            const response = await fetch('http://localhost:5000/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(signUpData)
+            });
+
+            const data = await response.json();
+
+            console.log(data);
+            if ('error' in data){
+                setError(data.error);
+            }
+        } catch (error) {
+            console.error('Signup failed:', error.message);
+
+            setError(error);
+        }
+
     };
 
     const handleSignInSubmit = (e) => {
@@ -42,21 +65,22 @@ const SignInUp = () => {
             <div className="flex gap-8 max-w-4xl w-full">
 
                 {/* Sign Up Form */}
-                <div className="flex-1 bg-gray-900 p-8 rounded-lg border border-gray-700">
+                <form className="flex-1 bg-gray-900 p-8 rounded-lg border border-gray-700" onSubmit={handleSignUpSubmit}>
                     <h2 className="text-white text-2xl font-bold mb-6 text-center">Sign Up</h2>
 
                     <div className="space-y-4">
+
                         <div>
                             <label className="block text-white text-sm font-medium mb-2">
-                                Full Name
+                                Name
                             </label>
                             <input
                                 type="text"
-                                name="fullName"
-                                value={signUpData.fullName}
+                                name="name"
+                                value={signUpData.name}
                                 onChange={handleSignUpChange}
                                 className="w-full px-4 py-3 bg-gray-800 text-white border border-gray-600 rounded-lg focus:outline-none focus:border-white placeholder-gray-400"
-                                placeholder="Enter your full name"
+                                placeholder="Enter your name"
                                 required
                             />
                         </div>
@@ -105,9 +129,11 @@ const SignInUp = () => {
                                 required
                             />
                         </div>
+                        {/* Lets user know that the passwords dont match */}
+                        {error && <p className="text-red-400 text-sm mt-2 text-center">{error}</p>}
 
                         <button
-                            onClick={handleSignUpSubmit}
+                            type={'submit'}
                             className="w-full bg-white text-black py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors duration-200"
                         >
                             Create Account
@@ -117,7 +143,7 @@ const SignInUp = () => {
                     <p className="text-gray-400 text-center mt-4">
                         Already have an account? Sign in on the right →
                     </p>
-                </div>
+                </form>
 
                 {/* Sign In Form */}
                 <div className="flex-1 bg-gray-900 p-8 rounded-lg border border-gray-700">
