@@ -55,9 +55,30 @@ const SignInUp = () => {
 
     };
 
-    const handleSignInSubmit = (e) => {
+    const handleSignInSubmit = async (e) => {
         e.preventDefault();
         console.log('Sign in data:', signInData);
+
+        try {
+            const response = await fetch('http://localhost:5000/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(signInData)
+            });
+
+            const data = await response.json();
+
+            console.log(data);
+            if ('error' in data) {
+                setError(data.error);
+            }
+        } catch (error) {
+            console.error('Login failed:', error.message);
+
+            setError(error);
+        }
     };
 
     return (

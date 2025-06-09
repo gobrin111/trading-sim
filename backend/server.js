@@ -8,6 +8,9 @@ import bcrypt from 'bcrypt';
 // import connectDB from './database.js';
 import {MongoClient} from "mongodb";
 // import User from './database-tables/User.js'
+import cookieParser from 'cookie-parser'
+import session from 'express-session'
+import MongoStore from "connect-mongo"
 
 // load env
 dotenv.config({path: '../.env'});
@@ -19,11 +22,25 @@ const server = createServer(app);
 
 const port = process.env.PORT || 5000;
 
+const session_secret = crypto.randomBytes(64).toString('hex');
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
+app.use(cookieParser());
+app.use(session({
+    secret: session_secret,
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: 'mongodb://mongo:27017/trading-sim'
+    }),
+    cookie: {
+        maxAge: 60*60*60*1000,
+        httpOnly: true
+    }
+}));
 app.use('/', router);
 
 console.log("Server Running");
@@ -81,7 +98,7 @@ router.post('/signup', async (req, res) => {
             name: name,
             email: email,
             password: hash,
-            auth_token: null
+            lastLogin: null
         }
 
         await userCollection.insertOne({
@@ -97,6 +114,52 @@ router.post('/signup', async (req, res) => {
 
     } catch (error) {
         console.error('Signup error:', error);
+        res.status(500).json({
+            error: 'Internal server error'
+        });
+    }
+})
+
+router.post('/signin', async (req, res) => {
+    try {
+        const {email, password} = req.body;
+        console.log("Endpoint for login hit");
+        console.log({email, password});
+
+        const checkPassword = await bcrypt.hash(password, 12)
+        const user = await userCollection.findOne({email: email});
+        if (!user) {
+            res.status(401).json({
+                error: 'Invalid credentials.'
+            })
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                error: 'Invalid credentials.'
+            })
+        }
+
+        req.session.userId = user._id;
+        req.session.email = user.email;
+        req.session.fullName = user.name;
+
+        await userCollection.updateOne({_id: user._id}, {
+            $set: {lastLogin: new Date()}
+        });
+
+        res.status(201).json({
+            message: 'SignIn successfully.',
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name
+            }
+        })
+
+    } catch (error) {
+        console.error('SignIn error:', error);
         res.status(500).json({
             error: 'Internal server error'
         });
