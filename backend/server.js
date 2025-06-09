@@ -126,7 +126,6 @@ router.post('/signin', async (req, res) => {
         console.log("Endpoint for login hit");
         console.log({email, password});
 
-        const checkPassword = await bcrypt.hash(password, 12)
         const user = await userCollection.findOne({email: email});
         if (!user) {
             res.status(401).json({
@@ -141,6 +140,7 @@ router.post('/signin', async (req, res) => {
             })
         }
 
+        // session creation
         req.session.userId = user._id;
         req.session.email = user.email;
         req.session.fullName = user.name;
