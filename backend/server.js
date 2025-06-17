@@ -11,6 +11,8 @@ import {MongoClient} from "mongodb";
 import cookieParser from 'cookie-parser'
 import session from 'express-session'
 import MongoStore from "connect-mongo"
+import crypto from "crypto";
+import {requireAuth} from "./util/requireAuth.js";
 
 // load env
 dotenv.config({path: '../.env'});
@@ -22,10 +24,14 @@ const server = createServer(app);
 
 const port = process.env.PORT || 5000;
 
-const session_secret = crypto.randomBytes(64).toString('hex');
+const session_secret = process.env.SESSION_SECRET || "fuckingbitchasspieceofshit";
+console.log('Session secret:', session_secret);
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3000',
+    credentials: true
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -38,7 +44,8 @@ app.use(session({
     }),
     cookie: {
         maxAge: 60*60*60*1000,
-        httpOnly: true
+        httpOnly: true,
+        secure: false// for development should remain false unless deployed
     }
 }));
 app.use('/', router);
@@ -84,11 +91,11 @@ router.post('/signup', async (req, res) => {
             });
         }
 
-        let emailCheck = (await userCollection.find({}).toArray()).length;
-        if (emailCheck > 0) {
+        const existingUser = await userCollection.findOne({ email });
+        if (existingUser) {
             return res.status(400).json({
                 error: 'Email already exists.'
-            })
+            });
         }
 
         // creat new user and store email name password into database
@@ -110,7 +117,9 @@ router.post('/signup', async (req, res) => {
         // create new profolio for the user as well
 
 
-        res.status(201)
+        res.status(201).json({
+            message: 'User created successfully',
+        });
 
     } catch (error) {
         console.error('Signup error:', error);
@@ -124,22 +133,22 @@ router.post('/signin', async (req, res) => {
     try {
         const {email, password} = req.body;
         console.log("Endpoint for login hit");
-        console.log({email, password});
 
         const user = await userCollection.findOne({email: email});
         if (!user) {
-            res.status(401).json({
+            return res.status(401).json({
                 error: 'Invalid credentials.'
-            })
+            });
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
             return res.status(401).json({
                 error: 'Invalid credentials.'
-            })
+            });
         }
 
+        console.log("before session creation");
         // session creation
         req.session.userId = user._id;
         req.session.email = user.email;
@@ -149,14 +158,29 @@ router.post('/signin', async (req, res) => {
             $set: {lastLogin: new Date()}
         });
 
-        res.status(201).json({
-            message: 'SignIn successfully.',
-            user: {
-                id: user._id,
-                email: user.email,
-                name: user.name
+        console.log("after session creation");
+        console.log('Session data:', req.session);
+
+        // WAIT for session to save before responding
+        req.session.save((err) => {
+            if (err) {
+                console.error('❌ Session save error:', err);
+                return res.status(500).json({ error: 'Session save failed' });
             }
-        })
+
+            console.log('✅ Session saved successfully');
+            console.log('Session ID:', req.session.id);
+
+            // NOW send the response
+            return res.status(200).json({
+                message: 'SignIn successfully.',
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    name: user.name
+                }
+            });
+        });
 
     } catch (error) {
         console.error('SignIn error:', error);
@@ -164,7 +188,9 @@ router.post('/signin', async (req, res) => {
             error: 'Internal server error'
         });
     }
-})
+});
+
+router.post('/test', requireAuth, async (req, res) => {})
 
 
 export default app;

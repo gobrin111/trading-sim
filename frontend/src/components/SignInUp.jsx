@@ -60,11 +60,12 @@ const SignInUp = () => {
         console.log('Sign in data:', signInData);
 
         try {
-            const response = await fetch('http://localhost:5000/login', {
+            const response = await fetch('http://localhost:5000/signin', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify(signInData)
             });
 
@@ -80,6 +81,31 @@ const SignInUp = () => {
             setError(error);
         }
     };
+
+    const test = async(e) => {
+        e.preventDefault();
+        try {
+            const response = await fetch('http://localhost:5000/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify(signInData)
+            });
+
+            const data = await response.json();
+
+            console.log(data);
+            if ('error' in data) {
+                setError(data.error);
+            }
+        } catch (error) {
+            console.error('Test failed', error.message);
+
+            setError(error);
+        }
+    }
 
     return (
         <div className="bg-black min-h-screen flex items-center justify-center p-8">
@@ -224,6 +250,14 @@ const SignInUp = () => {
                     </p>
                 </div>
             </div>
+
+            <button
+                onClick={test}
+                className="w-full bg-white text-black py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors duration-200"
+            >
+                testing
+            </button>
+
         </div>
     );
 };
